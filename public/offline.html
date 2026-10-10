@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farm Command — Offline</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f6f7f2;
+      color: #17352a;
+    }
+    .card {
+      max-width: 26rem;
+      background: #fff;
+      border: 1px solid #e3e6dc;
+      border-radius: 1.25rem;
+      padding: 2.5rem 2.25rem;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(15, 59, 46, 0.08);
+    }
+    .mark { font-size: 2.5rem; }
+    h1 { font-size: 1.35rem; margin: 0.75rem 0 0.5rem; }
+    p { color: #5c6b60; line-height: 1.55; margin: 0 0 1.25rem; }
+    button {
+      background: #0f3b2e;
+      color: #fff;
+      border: 0;
+      border-radius: 0.75rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #16543f; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark">🌾</div>
+    <h1>You are offline</h1>
+    <p>Farm Command can't reach the server right now. Recently viewed data may still be available when the connection returns. Check your network and try again.</p>
+    <button onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>

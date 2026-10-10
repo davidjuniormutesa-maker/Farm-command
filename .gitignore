@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+
+# local database files (never commit data)
+db/
+*.db
+*.db-journal
+prisma/*.db
+
+# environment / secrets
+.env
+.env.local
+.env*.local
+
+# logs
+*.log
+dev.log
+server.log
+
+# OS / editor
+.DS_Store
+Thumbs.db

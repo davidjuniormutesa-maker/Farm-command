@@ -1,0 +1,23 @@
+/** Standard TanStack Query keys (unchanged from the original API layer). */
+export const qk = {
+  settings: ["settings"] as const,
+  summary: ["summary"] as const,
+  animals: ["animals"] as const,
+  groups: ["groups"] as const,
+  livestock: ["livestock"] as const,
+  healthEvents: ["health-events"] as const,
+  vaccinations: ["vaccinations"] as const,
+  tasks: ["tasks"] as const,
+  fields: ["fields"] as const,
+  crops: ["crops"] as const,
+  activities: ["activities"] as const,
+  finance: ["finance"] as const,
+  reports: ["reports"] as const,
+  knowledge: ["knowledge"] as const,
+  weather: ["weather"] as const,
+  rainfall: ["rainfall"] as const,
+  dashboard: ["dashboard"] as const,
+  map: ["map"] as const,
+  poultry: ["poultry"] as const,
+  eggs: ["eggs"] as const,
+};

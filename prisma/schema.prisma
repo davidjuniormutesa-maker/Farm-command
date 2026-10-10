@@ -1,0 +1,436 @@
+// Farm Command — data model
+// Offline-first farm management for a family farm in Zambia.
+// NOTE: SQLite has no list primitives — JSON payloads are stored as strings.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Key/value app + farm settings (farm name, onboarding done, notification prefs, etc.)
+model FarmSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  deletedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+}
+
+/// A herd/flock (e.g. "Main cattle herd", "Layer flock")
+model LivestockGroup {
+  id          String   @id @default(cuid())
+  name        String
+  species     String
+  breed       String?
+  count       Int      @default(0)
+  // Simple role breakdown within the group (optional; all default 0).
+  breedingMaleCount   Int @default(0) // patriarchs: bull / ram / buck / boar / cock
+  breedingFemaleCount Int @default(0) // matriarchs: cow / ewe / doe / sow / hen
+  youngCount          Int @default(0) // young: calf / lamb / kid / piglet / chick
+  castratedCount      Int @default(0) // castrated: steer / wether / barrow / capon
+  location    String?
+  acquisition String?
+  status      String   @default("active") // active | archived
+  notes       String?
+  photo       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  animals      Animal[]
+  vaccinations Vaccination[]
+  healthEvents HealthEvent[]
+  activities   FarmActivity[]
+  tasks        Task[]
+  transactions FinanceTransaction[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
+}
+
+// Poultry flocks live in their own section (separate from LivestockGroup/Animal).
+// Each flock tracks a bird type + the same simple role breakdown, plus egg logs.
+model PoultryFlock {
+  id          String   @id @default(cuid())
+  name        String
+  birdType    String   // Chickens | Ducks | Quail | Turkeys | Geese
+  breed       String?
+  count       Int      @default(0)
+  breedingMaleCount   Int @default(0) // cock / drake / tom / gander
+  breedingFemaleCount Int @default(0) // hen / duck / goose
+  youngCount          Int @default(0) // chick / duckling / poult / gosling
+  castratedCount      Int @default(0) // capon etc.
+  location    String?
+  feedNote    String?  // light-touch feed note (full feed log is a later round)
+  status      String   @default("active") // active | archived
+  notes       String?
+  photo       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  eggLogs     EggLog[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
+}
+
+// A single daily egg-collection entry for a flock.
+model EggLog {
+  id        String   @id @default(cuid())
+  flockId   String
+  flock     PoultryFlock @relation(fields: [flockId], references: [id], onDelete: Cascade)
+  date      DateTime
+  eggs      Int      @default(0)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([flockId])
+  @@index([date])
+}
+
+/// An individual animal
+model Animal {
+  id             String    @id @default(cuid())
+  tagId          String    @unique
+  name           String?
+  species        String
+  breed          String?
+  sex            String?
+  birthDate      DateTime?
+  estimatedAge   String?
+  acquisition    String?
+  acquisitionDate DateTime?
+  location       String?
+  status         String    @default("active") // active | sold | deceased | archived
+  weightKg       Float?
+  targetWeightKg Float? // optional growth/market goal — drawn on the growth chart
+  notes          String?
+  photo          String?
+  groupId        String?
+  group          LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  healthEvents HealthEvent[]
+  vaccinations Vaccination[]
+  weightRecords WeightRecord[]
+  activities   FarmActivity[]
+  tasks        Task[]
+  transactions FinanceTransaction[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
+  @@index([groupId])
+}
+
+/// Weight / measurement history for an animal
+model WeightRecord {
+  id         String   @id @default(cuid())
+  animalId   String
+  animal     Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  weightKg   Float
+  recordedAt DateTime @default(now())
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([animalId])
+}
+
+/// General health / lifecycle timeline events for animals or groups
+model HealthEvent {
+  id           String   @id @default(cuid())
+  animalId     String?
+  animal       Animal?  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  groupId      String?
+  group        LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  type         String // observation | treatment | vet_visit | breeding | pregnancy | birth | death | movement | note
+  title        String
+  date         DateTime
+  details      String?
+  administeredBy String?
+  medication   String?
+  withdrawalDays Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([animalId])
+  @@index([groupId])
+}
+
+/// Vaccination record — nextDueDate automatically generates a linked Task reminder
+model Vaccination {
+  id             String    @id @default(cuid())
+  animalId       String?
+  animal         Animal?   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  groupId        String?
+  group          LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  vaccineName    String
+  dateGiven      DateTime
+  nextDueDate    DateTime?
+  batchNumber    String?
+  administeredBy String?
+  notes          String?
+  attachment     String?
+  reminderTaskId String? // Task created from nextDueDate
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([animalId])
+  @@index([groupId])
+  @@index([nextDueDate])
+}
+
+/// A physical field / plot / paddock
+model Field {
+  id          String   @id @default(cuid())
+  name        String
+  areaHa      Float?
+  location    String?
+  soilNotes   String?
+  irrigation  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  cropCycles CropCycle[]
+  activities FarmActivity[]
+  tasks      Task[]
+  transactions FinanceTransaction[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+}
+
+/// A crop growing cycle on a field (planting → harvest)
+model CropCycle {
+  id                  String    @id @default(cuid())
+  crop                String
+  variety             String?
+  fieldId             String?
+  field               Field?    @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  plantingDate        DateTime?
+  expectedHarvestDate DateTime?
+  actualHarvestDate   DateTime?
+  seedDetails         String?
+  harvestQuantity     Float?
+  harvestUnit         String?
+  saleAmount          Float?
+  status              String    @default("planned") // planned | growing | harvested | ended
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  activities   FarmActivity[]
+  tasks        Task[]
+  transactions FinanceTransaction[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
+  @@index([fieldId])
+}
+
+/// Timestamped farm activity log entry
+model FarmActivity {
+  id          String   @id @default(cuid())
+  type        String // planting | fertilizer | spraying | irrigation | weeding | scouting | harvesting | equipment | fencing | feeding | water | transport | other
+  title       String
+  date        DateTime
+  details     String?
+  cost        Float?
+  cropCycleId String?
+  cropCycle   CropCycle? @relation(fields: [cropCycleId], references: [id], onDelete: SetNull)
+  fieldId     String?
+  field       Field?     @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  animalId    String?
+  animal      Animal?    @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  groupId     String?
+  group       LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([cropCycleId])
+  @@index([fieldId])
+  @@index([animalId])
+  @@index([groupId])
+  @@index([date])
+}
+
+/// Task / reminder with repeat rules — completing a repeating task schedules the next occurrence
+model Task {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  category       String    @default("general") // general | livestock | crop | finance | maintenance | health
+  dueDate        DateTime
+  dueTime        String?
+  priority       String    @default("medium") // low | medium | high
+  repeatRule     String    @default("once") // once | daily | weekly | monthly | custom_days
+  repeatIntervalDays Int?
+  leadTimeDays   Int       @default(0)
+  animalId       String?
+  animal         Animal?   @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  groupId        String?
+  group          LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  cropCycleId    String?
+  cropCycle      CropCycle? @relation(fields: [cropCycleId], references: [id], onDelete: SetNull)
+  fieldId        String?
+  field          Field?     @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  assignee       String?
+  status         String    @default("open") // open | done | cancelled
+  completedAt    DateTime?
+  nextOccurrenceId String? // pointer to the auto-created next occurrence
+  vaccinationId  String? // set when generated from a vaccination next-due date
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([status])
+  @@index([dueDate])
+  @@index([status, dueDate])
+}
+
+/// Simple farm bookkeeping entry (income | expense) in ZMW
+model FinanceTransaction {
+  id            String   @id @default(cuid())
+  type          String // income | expense
+  category      String
+  amount        Float
+  date          DateTime
+  description   String
+  paymentMethod String?
+  receipt       String?
+  cropCycleId   String?
+  cropCycle     CropCycle? @relation(fields: [cropCycleId], references: [id], onDelete: SetNull)
+  fieldId       String?
+  field         Field?     @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  animalId      String?
+  animal        Animal?    @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  groupId       String?
+  group         LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([type])
+  @@index([date])
+}
+
+/// Cached agricultural knowledge article (Zambia-first sources) — readable offline
+model KnowledgeArticle {
+  id            String   @id @default(cuid())
+  title         String
+  topic         String
+  source        String
+  sourceUrl     String?
+  publishedDate String?
+  retrievedDate DateTime @default(now())
+  summary       String
+  content       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([topic])
+}
+
+/// Cached weather payload per location (served when the provider is unreachable)
+model WeatherSnapshot {
+  id        String   @id @default(cuid())
+  location  String
+  payload   String // JSON string
+  fetchedAt DateTime @default(now())
+}
+
+/// Farm map layout item — percentage coordinates on the farm-layout canvas
+model FarmMapItem {
+  id        String   @id @default(cuid())
+  kind      String // field | paddock | building | water | gate | road | other
+  label     String
+  x         Float // % of canvas width (left edge)
+  y         Float // % of canvas height (top edge)
+  w         Float // % of canvas width
+  h         Float // % of canvas height
+  color     String?  // optional override color token
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+}
+
+/// Daily rainfall reading (mm) — one record per calendar day (upsert by date)
+model RainfallLog {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  mm        Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([updatedAt])
+  @@index([deletedAt])
+}
+
+/// Web Push subscription for server-delivered reminder notifications (one per browser/device)
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+/// Dedupe log for server-sent reminder pushes (one row per kind/record/due-date)
+model PushLog {
+  id       String   @id @default(cuid())
+  kind     String   // task | vaccination
+  recordId String
+  dueDate  String
+  sentAt   DateTime @default(now())
+
+  @@unique([kind, recordId, dueDate])
+}
