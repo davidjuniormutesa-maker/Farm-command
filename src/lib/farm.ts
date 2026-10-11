@@ -268,6 +268,48 @@ export interface SummaryCounts {
 
 export const SPECIES = ["Cattle", "Goats", "Sheep", "Pigs", "Poultry", "Other"] as const;
 
+/**
+ * Quick-pick breed presets per livestock species — common Zambian breeds.
+ * These are only suggestions tapped into the free-text Breed field; the farmer
+ * can still type anything. Empty list = no suggestions for that species.
+ */
+export const BREED_PRESETS: Record<string, string[]> = {
+  Cattle: ["Angoni", "Boran", "Brahman", "Tonga", "Barotse", "Friesian", "Jersey", "Crossbreed"],
+  Goats: ["Small East African", "Boer", "Kalahari Red", "Saanen", "Crossbreed"],
+  Sheep: ["Dorper", "Blackhead Persian", "Merino", "Crossbreed"],
+  Pigs: ["Large White", "Landrace", "Duroc", "Camborough", "Local", "Crossbreed"],
+  Poultry: ["Village chicken", "Broiler", "Layer"],
+  Other: [],
+};
+
+/** Quick-pick breed presets per poultry bird type — common in Zambia. */
+export const BIRD_BREED_PRESETS: Record<string, string[]> = {
+  Chickens: [
+    "Village / Local",
+    "Broiler",
+    "Layer",
+    "Black Australorp",
+    "Rhode Island Red",
+    "Boschveld",
+    "Sasso",
+    "Kuroiler",
+  ],
+  Ducks: ["Muscovy", "Pekin", "Khaki Campbell", "Local"],
+  Quail: ["Japanese", "Local"],
+  Turkeys: ["Broad Breasted", "Black", "Local"],
+  Geese: ["Embden", "Local"],
+};
+
+/** Breed suggestions for a livestock species (empty array when none). */
+export function breedPresetsFor(species: string): string[] {
+  return BREED_PRESETS[species] ?? [];
+}
+
+/** Breed suggestions for a poultry bird type (empty array when none). */
+export function birdBreedPresetsFor(birdType: string): string[] {
+  return BIRD_BREED_PRESETS[birdType] ?? [];
+}
+
 // ---------- Group role breakdown (simple patriarch/matriarch/young/castrated) ----------
 
 export type AnimalRole = "breedingMale" | "breedingFemale" | "young" | "castrated";

@@ -13,6 +13,7 @@ export type FarmView =
   | "finances"
   | "reports"
   | "knowledge"
+  | "guide"
   | "settings";
 
 export type QuickAction =
@@ -62,5 +63,6 @@ export const VIEW_TITLES: Record<FarmView, string> = {
   finances: "Finances",
   reports: "Reports",
   knowledge: "Knowledge Hub",
+  guide: "Help & Guide",
   settings: "Settings",
 };

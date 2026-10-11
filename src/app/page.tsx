@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   LayoutDashboard, Milk, Sprout, BellRing, CalendarDays, Map as MapIcon, Wallet, BarChart3, BookOpen, Settings as SettingsIcon,
-  Menu, Search, Download, Ellipsis, Wifi, WifiOff, ChevronRight, Sparkles, Bird,
+  Menu, Search, Download, Ellipsis, Wifi, WifiOff, ChevronRight, Sparkles, Bird, LifeBuoy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -27,12 +27,18 @@ import FarmMapView from "@/components/farm/map/farm-map-view";
 import FinancesView from "@/components/farm/finances/finances-view";
 import ReportsView from "@/components/farm/reports/reports-view";
 import KnowledgeView from "@/components/farm/knowledge/knowledge-view";
+import GuideView from "@/components/farm/guide/guide-view";
 import SettingsView from "@/components/farm/settings/settings-view";
 import OnboardingDialog from "@/components/farm/onboarding/onboarding-dialog";
 import { GlobalSearchDialog } from "@/components/farm/search/global-search";
 import { FarmAssistantDialog } from "@/components/farm/assistant/assistant-dialog";
 import ReminderCenter from "@/components/farm/reminders/reminder-center";
 import SyncStatusChip from "@/components/farm/sync/sync-status-chip";
+import SplashScreen from "@/components/farm/splash-screen";
+import ProfileGate from "@/components/farm/members/profile-gate";
+import ProfileChip from "@/components/farm/members/profile-chip";
+import ExportDialog from "@/components/farm/export/export-dialog";
+import { useMembersStore } from "@/components/farm/members/members-store";
 
 const NAV_ITEMS: { view: FarmView; label: string; icon: React.ElementType; mobile: boolean }[] = [
   { view: "dashboard", label: "Dashboard", icon: LayoutDashboard, mobile: true },
@@ -45,6 +51,7 @@ const NAV_ITEMS: { view: FarmView; label: string; icon: React.ElementType; mobil
   { view: "finances", label: "Finances", icon: Wallet, mobile: false },
   { view: "reports", label: "Reports", icon: BarChart3, mobile: false },
   { view: "knowledge", label: "Knowledge Hub", icon: BookOpen, mobile: false },
+  { view: "guide", label: "Help & Guide", icon: LifeBuoy, mobile: false },
   { view: "settings", label: "Settings", icon: SettingsIcon, mobile: false },
 ];
 
@@ -57,6 +64,10 @@ export default function FarmCommandApp() {
   const connection = useConnection();
   const { canInstall, installed, promptInstall } = useInstallPrompt();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const activeMemberName = useMembersStore((s) => {
+    const m = s.members.find((x) => x.id === s.activeId);
+    return m?.name ?? null;
+  });
 
   const { data: settings } = useQuery({ queryKey: qk.settings, queryFn: () => apiGet<FarmSettingsData>("/api/settings") });
   const { data: summary } = useQuery({
@@ -84,7 +95,8 @@ export default function FarmCommandApp() {
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const greeting = `${greetingForHour(now.getHours())}${settings ? `, ${settings.ownerName}` : ""}`;
+  const greetingName = activeMemberName ?? settings?.ownerName ?? null;
+  const greeting = `${greetingForHour(now.getHours())}${greetingName ? `, ${greetingName}` : ""}`;
 
   const navButton = (item: (typeof NAV_ITEMS)[number], onClick?: () => void) => {
     const active = activeView === item.view;
@@ -141,10 +153,16 @@ export default function FarmCommandApp() {
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Branded startup animation (plays once per app launch) */}
+      <SplashScreen />
+      {/* Family profile gate — "who's using the app" (DJ / Dad / Mom) */}
+      <ProfileGate />
+
       {/* ---------- Desktop sidebar ---------- */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex print:hidden">
         <div className="flex items-center gap-3 px-5 pb-4 pt-6">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-xl" aria-hidden>🌿</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon-192.png" alt="Farm Command logo" width={40} height={40} className="size-10 rounded-xl shadow-sm" draggable={false} />
           <div>
             <div className="text-sm font-extrabold tracking-wide">FARM COMMAND</div>
             <div className="text-[11px] text-sidebar-foreground/60">Smart Farming. Better Yields.</div>
@@ -189,7 +207,8 @@ export default function FarmCommandApp() {
               <SheetContent side="left" className="w-72 border-sidebar bg-sidebar p-0 text-sidebar-foreground">
                 <SheetHeader className="border-b border-sidebar-border px-5 pb-4 pt-5 text-left">
                   <SheetTitle className="flex items-center gap-3 text-sidebar-foreground">
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-lg" aria-hidden>🌿</div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/icon-192.png" alt="Farm Command logo" width={36} height={36} className="size-9 rounded-xl shadow-sm" draggable={false} />
                     <div>
                       <div className="text-sm font-extrabold tracking-wide">FARM COMMAND</div>
                       <div className="text-[11px] font-normal text-sidebar-foreground/60">{settings?.farmName ?? "My Farm"}</div>
@@ -222,6 +241,8 @@ export default function FarmCommandApp() {
                 <Search className="size-4" aria-hidden />
               </Button>
               <ReminderCenter />
+              <ExportDialog />
+              <ProfileChip />
               {canInstall && (
                 <Button
                   variant="outline"
@@ -262,6 +283,7 @@ export default function FarmCommandApp() {
               {activeView === "finances" && <FinancesView />}
               {activeView === "reports" && <ReportsView />}
               {activeView === "knowledge" && <KnowledgeView />}
+              {activeView === "guide" && <GuideView />}
               {activeView === "settings" && <SettingsView />}
             </motion.div>
           </AnimatePresence>

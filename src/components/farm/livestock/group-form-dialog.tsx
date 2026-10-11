@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { Camera, Loader2, Upload } from "lucide-react";
 import { apiSend } from "@/lib/api";
-import { SPECIES, ROLE_LABEL, groupRoleSummary, groupRoleWord } from "@/lib/farm";
+import { SPECIES, ROLE_LABEL, groupRoleSummary, groupRoleWord, breedPresetsFor } from "@/lib/farm";
 import type { LivestockGroupDTO } from "@/lib/farm";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,10 @@ import { CameraCaptureDialog } from "@/components/farm/media/camera-capture-dial
 interface GroupFormDialogProps {
   /** Existing group to edit, or null to create. */
   group: LivestockGroupDTO | null;
+  /** When creating, pre-fill the species (from a livestock preset tile). */
+  initialSpecies?: string;
+  /** When creating, pre-fill a suggested group name (from a preset tile). */
+  initialName?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -61,14 +65,20 @@ function toNonNegInt(value: string): number {
   return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
-export default function GroupFormDialog({ group, onClose, onSaved }: GroupFormDialogProps) {
+export default function GroupFormDialog({
+  group,
+  initialSpecies,
+  initialName,
+  onClose,
+  onSaved,
+}: GroupFormDialogProps) {
   const [saving, setSaving] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraSupported, setCameraSupported] = useState(false);
   const photoFileRef = useRef<HTMLInputElement | null>(null);
   const [values, setValues] = useState<GroupFormValues>({
-    name: group?.name ?? "",
-    species: group?.species ?? "Cattle",
+    name: group?.name ?? initialName ?? "",
+    species: group?.species ?? initialSpecies ?? "Cattle",
     breed: group?.breed ?? "",
     count: group ? String(group.count) : "0",
     breedingMaleCount: group?.breedingMaleCount ? String(group.breedingMaleCount) : "0",
@@ -210,6 +220,28 @@ export default function GroupFormDialog({ group, onClose, onSaved }: GroupFormDi
               onChange={(e) => set({ breed: e.target.value })}
               placeholder="e.g. Small East African"
             />
+            {breedPresetsFor(values.species).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {breedPresetsFor(values.species).map((b) => {
+                  const active = values.breed.trim().toLowerCase() === b.toLowerCase();
+                  return (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => set({ breed: active ? "" : b })}
+                      aria-pressed={active}
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-card text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

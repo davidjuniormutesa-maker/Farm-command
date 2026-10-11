@@ -50,6 +50,7 @@ import {
 } from "./livestock-helpers";
 import AnimalFormDialog from "./animal-form-dialog";
 import GroupFormDialog from "./group-form-dialog";
+import PresetPickerDialog, { type LivestockPreset } from "./preset-picker-dialog";
 import HealthEventFormDialog from "./health-event-form-dialog";
 import VaccinationFormDialog from "./vaccination-form-dialog";
 import AnimalDetailDialog from "./animal-detail-dialog";
@@ -59,7 +60,7 @@ import GroupDetailDialog from "./group-detail-dialog";
 
 type FormRequest =
   | { kind: "animal-form"; animal?: AnimalWithGroup }
-  | { kind: "group-form"; group?: LivestockGroupDTO }
+  | { kind: "group-form"; group?: LivestockGroupDTO; initialSpecies?: string; initialName?: string }
   | { kind: "health-form"; target?: FormTarget; event?: HealthEventWithRefs }
   | { kind: "vac-form"; target?: FormTarget; vaccination?: VaccinationWithRefs };
 
@@ -76,6 +77,10 @@ export default function LivestockView() {
   const queryClient = useQueryClient();
   const quickAction = useFarmStore((s) => s.quickAction);
   const consumeQuickAction = useFarmStore((s) => s.consumeQuickAction);
+  const setView = useFarmStore((s) => s.setView);
+
+  // Guided "what are you adding?" preset step shown before the Add-group form.
+  const [presetOpen, setPresetOpen] = useState(false);
 
   // ---------- Data ----------
   const animalsQuery = useQuery({
@@ -196,7 +201,7 @@ export default function LivestockView() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="min-h-11" onClick={() => openForm({ kind: "group-form" })}>
+          <Button variant="outline" className="min-h-11" onClick={() => setPresetOpen(true)}>
             <Boxes className="size-4" aria-hidden />
             Add Group
           </Button>
@@ -374,7 +379,7 @@ export default function LivestockView() {
               title="No groups yet"
               description="Group your herd or flock — then record health events and vaccinations for many animals at once."
               action={
-                <Button className="mt-5 min-h-11" onClick={() => openForm({ kind: "group-form" })}>
+                <Button className="mt-5 min-h-11" onClick={() => setPresetOpen(true)}>
                   <Plus className="size-4" aria-hidden />
                   Add Group
                 </Button>
@@ -440,8 +445,10 @@ export default function LivestockView() {
       )}
       {activeForm?.kind === "group-form" && (
         <GroupFormDialog
-          key={activeForm.group?.id ?? "new-group"}
+          key={activeForm.group?.id ?? `new-group-${activeForm.initialSpecies ?? ""}`}
           group={activeForm.group ?? null}
+          initialSpecies={activeForm.initialSpecies}
+          initialName={activeForm.initialName}
           onClose={() => closeForm("group-form")}
           onSaved={invalidateAll}
         />
@@ -468,6 +475,24 @@ export default function LivestockView() {
           onSaved={invalidateAll}
         />
       )}
+
+      {/* ---------- Guided preset picker (shown before the Add-group form) ---------- */}
+      <PresetPickerDialog
+        open={presetOpen}
+        onClose={() => setPresetOpen(false)}
+        onPick={(preset: LivestockPreset) => {
+          setPresetOpen(false);
+          openForm({
+            kind: "group-form",
+            initialSpecies: preset.species,
+            initialName: preset.suggestedName || undefined,
+          });
+        }}
+        onGoToPoultry={() => {
+          setPresetOpen(false);
+          setView("poultry");
+        }}
+      />
     </div>
   );
 }

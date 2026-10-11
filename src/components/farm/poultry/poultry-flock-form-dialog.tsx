@@ -17,6 +17,7 @@ import {
   ROLE_LABEL,
   birdRoleWord,
   flockRoleSummary,
+  birdBreedPresetsFor,
 } from "@/lib/farm";
 import type { PoultryFlockDTO } from "@/lib/farm";
 import { Button } from "@/components/ui/button";
@@ -210,6 +211,28 @@ export default function PoultryFlockFormDialog({ flock, onClose, onSaved }: Poul
               onChange={(e) => set({ breed: e.target.value })}
               placeholder="e.g. Black Australorp"
             />
+            {birdBreedPresetsFor(values.birdType).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {birdBreedPresetsFor(values.birdType).map((b) => {
+                  const active = values.breed.trim().toLowerCase() === b.toLowerCase();
+                  return (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => set({ breed: active ? "" : b })}
+                      aria-pressed={active}
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-card text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

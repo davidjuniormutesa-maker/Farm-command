@@ -12,7 +12,7 @@
    - Push: server-delivered reminder notifications (Web Push / VAPID) with a
      notificationclick handler that focuses or opens the relevant screen.
 */
-const VERSION = 'farmcommand-v3';
+const VERSION = 'farmcommand-v4';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
